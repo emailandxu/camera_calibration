@@ -92,10 +92,10 @@ class Window(WindowBase):
     
     @property
     def oriental(self):
-        return np.array(spherical(self.theta, self.phi, 1.))
+        return np.array(spherical(self.theta, np.pi/2, 1.))
  
     def xinit(self):
-        tex = imread("resources/ambu/input/IMG_20231023_124526_00_052.jpg")
+        tex = imread("resources/spot/spot_texture.png")
         tex = np.ascontiguousarray(tex.transpose(1, 0, 2))
         print(tex.shape, tex.dtype)
         xobj = self.create_plane(tex)
@@ -105,8 +105,9 @@ class Window(WindowBase):
     
     def create_plane(self, tex, trans=None, quat=None):
         xobj = XObj(tex)
-        # xobj.bind_vao(self.load_scene("eqrec/eqrec.obj").root_nodes[0].mesh.vao)
-        vao = geometry.cube()
+        # vao = self.load_scene("eqrec/eqrec.obj").root_nodes[0].mesh.vao
+        vao = self.load_scene("spot/spot.obj").root_nodes[0].mesh.vao
+        # vao = geometry.cube()
         xobj.bind_vao(vao)
         xobj.bind_prog(self.load_program("default.glsl"))
         xobj.bind_texture(self.ctx.texture(xobj.texture_size, xobj.texture_channel))
@@ -115,35 +116,38 @@ class Window(WindowBase):
         xobj.quat = quat if quat is not None else mat2quat(rotate_y(np.pi/2) @ rotate_z(np.pi * 3/2))
         return xobj
     
-      
     def key_event(self, key, action, modifiers):
-        """W,A,S,D,Q,E,Z,C: 119, 97, 115, 100, 113, 101, 122, 99"""
         super().key_event(key, action, modifiers)
         if action == "ACTION_PRESS":
-            if key == 119:
+            if key == 119: # W
                 self.eye -= self.oriental
-            elif key==97:
+            elif key==97: # A
                 self.eye += np.cross(self.oriental, np.array([0.,1.,0.]))
-            elif key==115:
+            elif key==115: # S
                 self.eye += self.oriental
-            elif key==100:
+            elif key==100: # D
                 self.eye -= np.cross(self.oriental, np.array([0.,1.,0.]))
-            elif key==113:
+            elif key==106: # J
                 self.theta+=0.1
-            elif key==101:
+            elif key==108: # L
                 self.theta-=0.1
-            elif key==122:
-                self.eye[1]+=0.1
-            elif key==99:
-                self.eye[1]-=0.1
+            elif key==105: # J
+                self.phi+=0.1
+            elif key==107: # K
+                self.phi-=0.1
+            elif key==99: # C
+                self.eye[1]-= 1
+            elif key==32: # Space
+                self.eye[1]+= 1
             else:
                 print(key)
 
     def xrender(self, t, frame_t):
         imgui.text(f"{1/frame_t:.4f}")
-        imgui.text(f"{self.eye}, {self.theta}, {self.phi}")
+        imgui.text(f"{self.eye.astype('f2')}")
+        imgui.text(f"{self.theta:.4f}, {self.phi:.4f}")
 
-        self.view = lookAt(eye=self.eye, at=self.eye-self.oriental, up=np.array([0, 1, 0]))
+        self.view = lookAt(eye=self.eye, at=self.eye-spherical(self.theta, self.phi, 1.), up=np.array([0, 1, 0]))
         
         for xobj in self.xobjs:
             # xobj.quat = mat2quat(rotate_x(t) @ rotate_y(t))
