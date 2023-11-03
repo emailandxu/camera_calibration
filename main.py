@@ -1,11 +1,11 @@
-#!/home/xushuli/miniconda3/envs/meshdiff/bin/python
+#!python
 import imgui
 import numpy as np
 
 from imageio import imread
 
 import moderngl as mgl
-from moderngl_window import geometry, resources
+from moderngl_window import geometry, resources, run_window_config
 from moderngl_window.opengl.vao import VAO
 
 from graphics.base import WindowBase
@@ -82,11 +82,17 @@ class Window(WindowBase):
         self.wdist = float_widget("distance", 0., 2., 1.0)
         self.wrot = bool_widget("rotate", True)
 
-        self.eye = np.array([0, 0, 1])
+        self.eye = np.array([0., 0., 1.])
+        self.theta = 0.
+        self.phi = np.pi/2
         self.proj = projection(fov=45)
         self.view = np.identity(4)
         self.xobjs = []
         self.xinit()
+    
+    @property
+    def oriental(self):
+        return np.array(spherical(self.theta, self.phi, 1.))
  
     def xinit(self):
         tex = imread("resources/ambu/input/IMG_20231023_124526_00_052.jpg")
@@ -99,7 +105,9 @@ class Window(WindowBase):
     
     def create_plane(self, tex, trans=None, quat=None):
         xobj = XObj(tex)
-        xobj.bind_vao(self.load_scene("eqrec/eqrec.obj").root_nodes[0].mesh.vao)
+        # xobj.bind_vao(self.load_scene("eqrec/eqrec.obj").root_nodes[0].mesh.vao)
+        vao = geometry.cube()
+        xobj.bind_vao(vao)
         xobj.bind_prog(self.load_program("default.glsl"))
         xobj.bind_texture(self.ctx.texture(xobj.texture_size, xobj.texture_channel))
 
@@ -109,28 +117,37 @@ class Window(WindowBase):
     
       
     def key_event(self, key, action, modifiers):
-        """W,A,S,D: 119, 97, 115, 100"""
+        """W,A,S,D,Q,E,Z,C: 119, 97, 115, 100, 113, 101, 122, 99"""
         super().key_event(key, action, modifiers)
         if action == "ACTION_PRESS":
             if key == 119:
-                self.eye[2]-=1
+                self.eye -= self.oriental
             elif key==97:
-                self.eye[0]-=1,
+                self.eye += np.cross(self.oriental, np.array([0.,1.,0.]))
             elif key==115:
-                self.eye[2]+=1,
+                self.eye += self.oriental
             elif key==100:
-                self.eye[0]+=1
+                self.eye -= np.cross(self.oriental, np.array([0.,1.,0.]))
+            elif key==113:
+                self.theta+=0.1
+            elif key==101:
+                self.theta-=0.1
+            elif key==122:
+                self.eye[1]+=0.1
+            elif key==99:
+                self.eye[1]-=0.1
+            else:
+                print(key)
 
     def xrender(self, t, frame_t):
         imgui.text(f"{1/frame_t:.4f}")
-        imgui.text(f"{self.eye}")
+        imgui.text(f"{self.eye}, {self.theta}, {self.phi}")
 
-        sphere = np.array(spherical(self.wtheta(), self.wphi(), 1.))
-        self.view = lookAt(eye=self.eye, at=self.eye-sphere, up=np.array([0, 1, 0]))
+        self.view = lookAt(eye=self.eye, at=self.eye-self.oriental, up=np.array([0, 1, 0]))
         
         for xobj in self.xobjs:
             # xobj.quat = mat2quat(rotate_x(t) @ rotate_y(t))
             xobj.render(self.proj, self.view)
 
 if __name__ == "__main__":
-    Window.run()
+    run_window_config(Window, args=["--window", "pyglet"])

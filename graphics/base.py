@@ -13,7 +13,7 @@ class WindowBase(mglw.WindowConfig):
 
     gl_version = (3, 3)
     title = "ModernGL SkinDebugging"
-    window_size = (512, 512)
+    window_size = (1024, 768)
     aspect_ratio = window_size[0] / window_size[1]
     resizable = True
 
