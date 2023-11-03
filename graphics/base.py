@@ -22,9 +22,6 @@ class WindowBase(mglw.WindowConfig):
     def __init__(self, ctx: moderngl.Context = None, wnd: "BaseWindow" = None, timer: "BaseTimer" = None, **kwargs):
         super().__init__(ctx, wnd, timer, **kwargs)
         self.ctx = ctx
-        self.proj = np.identity(4)
-        self.view = np.identity(4)
-        
         imgui.create_context()
         self.imgui = ModernglWindowRenderer(self.wnd)
 
