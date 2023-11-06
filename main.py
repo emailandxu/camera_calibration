@@ -13,6 +13,61 @@ from graphics.base import WindowBase
 from graphics.widgets import float_widget, bool_widget
 from graphics.utils.mathutil import spherical, posemat, lookAt, projection, mat2quat, rotate_x, rotate_y, rotate_z
 
+random_tex = lambda : (np.random.rand(255, 255, 3) * 255).astype("u1")
+
+class FPSCamera():
+    def __init__(self) -> None:
+        self.eye = np.array([0., 0., 1.])
+        self.theta = 0.
+        self.phi = np.pi/2
+
+    @property
+    def oriental(self):
+        return np.array(spherical(self.theta, np.pi/2, 1.))
+    
+    @property
+    def look_target(self):
+        return np.array(spherical(self.theta, self.phi, 1.))
+    
+    @property
+    @lru_cache(maxsize=-1)
+    def proj(self):
+        return projection(fov=60)
+
+    @property
+    def view(self):
+        return lookAt(eye=self.eye, at=self.eye-self.look_target, up=np.array([0, 1, 0]))
+
+    def key_event(self, key, action, modifiers):
+        if action == "ACTION_PRESS":
+            if key == 119: # W
+                self.eye -= self.oriental
+            elif key==97: # A
+                self.eye += np.cross(self.oriental, np.array([0.,1.,0.]))
+            elif key==115: # S
+                self.eye += self.oriental
+            elif key==100: # D
+                self.eye -= np.cross(self.oriental, np.array([0.,1.,0.]))
+            elif key==106: # J
+                self.theta+=0.1
+            elif key==108: # L
+                self.theta-=0.1
+            elif key==105: # J
+                self.phi+=0.1
+            elif key==107: # K
+                self.phi-=0.1
+            elif key==99: # C
+                self.eye[1]-= 1
+            elif key==32: # Space
+                self.eye[1]+= 1
+            else:
+                print(key)
+
+    def debug_gui(self):
+        imgui.text(f"{self.eye.astype('f2')}")
+        imgui.text(f"{self.theta:.4f}, {self.phi:.4f}")
+
+
 class XObjBase():
     def __init__(self) -> None:
         self.scale = np.ones(3)
@@ -76,58 +131,6 @@ class XObj(XObjBase):
         self.prog["mvp"].write(mvp)
         self.vao.render(self.prog)
 
-class FPSCamera():
-    def __init__(self) -> None:
-        self.eye = np.array([0., 0., 1.])
-        self.theta = 0.
-        self.phi = np.pi/2
-
-    @property
-    def oriental(self):
-        return np.array(spherical(self.theta, np.pi/2, 1.))
-    
-    @property
-    def look_target(self):
-        return np.array(spherical(self.theta, self.phi, 1.))
-    
-    @property
-    @lru_cache(maxsize=-1)
-    def proj(self):
-        return projection(fov=45)
-
-    @property
-    def view(self):
-        return lookAt(eye=self.eye, at=self.eye-self.look_target, up=np.array([0, 1, 0]))
-
-    def key_event(self, key, action, modifiers):
-        if action == "ACTION_PRESS":
-            if key == 119: # W
-                self.eye -= self.oriental
-            elif key==97: # A
-                self.eye += np.cross(self.oriental, np.array([0.,1.,0.]))
-            elif key==115: # S
-                self.eye += self.oriental
-            elif key==100: # D
-                self.eye -= np.cross(self.oriental, np.array([0.,1.,0.]))
-            elif key==106: # J
-                self.theta+=0.1
-            elif key==108: # L
-                self.theta-=0.1
-            elif key==105: # J
-                self.phi+=0.1
-            elif key==107: # K
-                self.phi-=0.1
-            elif key==99: # C
-                self.eye[1]-= 1
-            elif key==32: # Space
-                self.eye[1]+= 1
-            else:
-                print(key)
-
-    def debug_gui(self):
-        imgui.text(f"{self.eye.astype('f2')}")
-        imgui.text(f"{self.theta:.4f}, {self.phi:.4f}")
-
 class Window(WindowBase):
     def __init__(self, ctx: "mgl.Context" = None, wnd: "BaseWindow" = None, timer: "BaseTimer" = None, **kwargs):
         super().__init__(ctx, wnd, timer, **kwargs)
@@ -139,11 +142,15 @@ class Window(WindowBase):
         tex = imread("resources/spot/spot_texture.png")
         tex = np.ascontiguousarray(tex.transpose(1, 0, 2))
         print(tex.shape, tex.dtype)
-        xobj = self.create_plane(tex)
-        print(xobj.texture_size, xobj.texture_channel)
-        self.xobjs.append(xobj)
+        xobj = self.create(np.ascontiguousarray(tex[:,::-1]))
+        xobj.trans = [-1, 0, -3]
+        xobj2 = self.create(tex)
+        xobj2.trans = [0, 0, -3]
 
-    def create_plane(self, tex, trans=None, quat=None):
+        self.xobjs.append(xobj)
+        self.xobjs.append(xobj2)
+
+    def create(self, tex, trans=None, quat=None):
         xobj = XObj(tex)
         # vao = self.load_scene("eqrec/eqrec.obj").root_nodes[0].mesh.vao
         vao = self.load_scene("spot/spot.obj").root_nodes[0].mesh.vao
