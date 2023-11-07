@@ -20,17 +20,16 @@ def from_colmap(path, root_path=""):
     )), cameras))
     return poses
 
-def from_openmvg(path):
+def from_openmvg(path, images=""):
     """reconstruction_global/sfm-data.json"""
     import json
     obj = json.load(open(path))
-    root_path = obj["root_path"] 
     filemap = dict(map(
-        lambda v: (v["key"], 
-                   os.path.join(root_path, v["value"]["ptr_wrapper"]["data"]["filename"])),
+        lambda v: ( v["key"], 
+                   v["value"]["ptr_wrapper"]["data"]["filename"]),
         obj["views"]
     ))
-    poses = dict(map(lambda o: (filemap[o['key']], pose2mat(
+    poses = dict(map(lambda o: (os.path.join(images, filemap[o['key']]), pose2mat(
         o['value']['center'], o['value']['rotation']
     )), obj['extrinsics']))
     return poses

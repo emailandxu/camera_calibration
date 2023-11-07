@@ -90,6 +90,13 @@ print ("8. To Cubic")
 pRecons = subprocess.Popen( [os.path.join(OPENMVG_SFM_BIN, "openMVG_main_openMVGSpherical2Cubic"),  "-i", reconstruction_dir+"/sfm_data.bin", "-o", os.path.join(output_dir,"cubic")] )
 pRecons.wait()
 
+print ("8.1 to json")
+cmd =  [os.path.join(OPENMVG_SFM_BIN, "openMVG_main_ConvertSfM_DataFormat"), 
+                             "binary",  "-i", os.path.join(output_dir,"cubic") +"/sfm_data_perspective.bin", "-o", output_dir+"/sfm_data_perspective.json",
+                            "-V", "-I", "-E" ]
+pRecons = subprocess.Popen(cmd)
+pRecons.wait()
+
 print("9. To Colamp")
 pRecons = subprocess.Popen( [os.path.join(OPENMVG_SFM_BIN, "openMVG_main_openMVG2Colmap"),  "-i", output_dir+"/cubic/sfm_data_perspective.bin", "-o", os.path.join(output_dir,"cubic/colmap_sparse")] )
 pRecons.wait()

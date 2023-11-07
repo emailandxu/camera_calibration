@@ -1,5 +1,6 @@
 #!python
 from functools import lru_cache
+import os
 import imgui
 import numpy as np
 
@@ -14,8 +15,16 @@ from graphics.widgets import float_widget, bool_widget, float3_widget
 from graphics.utils.mathutil import spherical, posemat, lookAt, projection, mat2quat, rotate_x, rotate_y, rotate_z
 
 from util import pad_image_to_size
+from plyfile import PlyData, PlyElement
 
 random_tex = lambda : (np.random.rand(255, 255, 3) * 255).astype("u1")
+
+def fetchPCD(path):
+    plydata = PlyData.read(path)
+    vertices = plydata['vertex']
+    positions = np.vstack([vertices['x'], vertices['y'], vertices['z']]).T
+    colors = np.vstack([vertices['red'], vertices['green'], vertices['blue']]).T / 255.0
+    return positions, colors
 
 class FPSCamera():
     def __init__(self, speed=0.5) -> None:
@@ -26,7 +35,8 @@ class FPSCamera():
 
     @property
     def oriental(self):
-        return np.array(spherical(self.theta, np.pi/2, 1.))
+        # return np.array(spherical(self.theta, np.pi/2, 1.))
+        return self.look_target
     
     @property
     def look_target(self):
@@ -35,7 +45,7 @@ class FPSCamera():
     @property
     @lru_cache(maxsize=-1)
     def proj(self):
-        return projection(fov=60)
+        return projection(fov=60, near=0.001)
 
     @property
     def view(self):
@@ -112,8 +122,9 @@ class XObj(XObjBase):
         if prog is not None:
             self.bind_prog(prog)
 
-        self.texture.use(0)
-        self.prog['texture0'].value = 0
+        if hasattr(self, "texture"):
+            self.texture.use(0)
+            self.prog['texture0'].value = 0
 
         m, v, p = self.posemat, camera.view, camera.proj
 
@@ -133,15 +144,16 @@ class Window(WindowBase):
         self.wfloat3 = float3_widget("target", 0, 3, (1, 1, 1))
         self.camera = FPSCamera()
         self.default_prog = self.load_program("default.glsl")
+        self.pcd_prog = self.load_program("pcd.glsl")
 
-    def setCamera(self, trans=None, quat=None):
+    def setCamera(self, trans=None, quat=None, scale=None):
         x = np.array([0., 0., 0., 1., 0., 0.], dtype="f4")
-        y = np.array([0., 0., 0., 0., -1., 0.], dtype="f4")
+        y = np.array([0., 0., 0., 0., 1., 0.], dtype="f4")
         z = np.array([0., 0., 0., 0., 0., 1.], dtype="f4")
 
         r = np.array([[[255, 0, 0]]], dtype="u1")
         g = np.array([[[0, 255, 0]]], dtype="u1")
-        b = np.array([[[0, 0, 255]]], dtype="u1")
+        b = np.array([[[255, 255, 255], [0, 0, 255]]], dtype="u1")
 
         def make(vertices, tex):
             xobj = XObj()
@@ -155,17 +167,18 @@ class Window(WindowBase):
             xobj.bind_prog(self.default_prog)
             xobj.bind_texture(texture)
 
-            xobj.trans = trans if trans is not None else [0, 0, -3]
-            xobj.quat = quat if quat is not None else [0, 0, 0, 1]
+            xobj.scale = scale if scale is not None else np.array([1, 1, 1])
+            xobj.trans = trans if trans is not None else np.array([0, 0, -3])
+            xobj.quat = quat if quat is not None else np.array([0, 0, 0, 1])
             return xobj
         
         self.xobjs.extend([
-            make(x, r),
-            make(y, g),
+            # make(x, r),
+            # make(y, g),
             make(z, b)
         ])
     
-    def setPlane(self, tex, trans=None, quat=None):
+    def setPlane(self, tex, trans=None, quat=None, scale=None):
         xobj = XObj()
 
         vao = geometry.quad_fs()
@@ -175,12 +188,28 @@ class Window(WindowBase):
         xobj.bind_prog(self.default_prog)
         xobj.bind_texture(texture)
 
-        xobj.trans = trans if trans is not None else [0, 0, -3]
-        xobj.quat = quat if quat is not None else [0, 0, 0, 1]
-        xobj.scale = np.ones(3)
+        xobj.scale = scale if scale is not None else np.array([1, 1, 1])
+        xobj.trans = trans if trans is not None else np.array([0, 0, -3])
+        xobj.quat = quat if quat is not None else np.array([0, 0, 0, 1])
 
         self.xobjs.append(xobj)
     
+
+    def setPoints(self, points, rgbs, trans=None, quat=None, scale=None):
+        xobj = XObj()
+        vao = VAO(mode=mgl.POINTS)
+        vao.buffer(np.array(points, dtype="f4"), "3f", "in_position")
+        vao.buffer(np.array(rgbs, dtype="f4"), "3f", "in_rgb")
+
+        xobj.bind_vao(vao)
+        xobj.bind_prog(self.pcd_prog)
+
+        xobj.scale = scale if scale is not None else np.array([1, 1, 1])
+        xobj.trans = trans if trans is not None else np.array([0, 0, -3])
+        xobj.quat = quat if quat is not None else np.array([0, 0, 0, 1])
+
+        self.xobjs.append(xobj)
+
     def key_event(self, key, action, modifiers):
         super().key_event(key, action, modifiers)
         if action=="ACTION_PRESS":
@@ -197,7 +226,7 @@ class Window(WindowBase):
         self.camera.debug_gui()
 
         scale = self.wfloat()
-        self.camera.speed = scale
+        self.camera.speed = scale if scale < self.camera.speed else self.camera.speed
 
         assert len(self.xobjs) > 0
 
@@ -209,21 +238,4 @@ class Window(WindowBase):
             xobj.scale_offset =  np.ones(3) * scale
             xobj.render(self.camera)
 
-class CameraCalibrationWindow(Window):
-    def __init__(self, ctx: "mgl.Context" = None, wnd: "BaseWindow" = None, timer: "BaseTimer" = None, **kwargs):
-        super().__init__(ctx, wnd, timer, **kwargs)
-        from camera import from_openmvg, from_colmap
-        from scipy.spatial.transform import Rotation
-        openmvg_path = "db/avenue/output/reconstruction_global/sfm_data.json"
-        for path, mat in from_openmvg(openmvg_path).items():
-        # for path, mat in from_colmap("db/avenue/output/sparse/0/images.txt", "db/avenue/output/images").items():
-            mat = np.array(mat)
-            trans = mat[:3, 3] * 3
-            quat =  Rotation.from_matrix(mat[:3, :3]).as_quat()
-            self.setCamera(trans=trans, quat=quat)
-            # img = imread(path)
-            # img = pad_image_to_size(img, max(*img.shape[:2]), max(*img.shape[:2]))
-            # self.setPlane(img, trans=trans, quat=quat)
 
-if __name__ == "__main__":
-    run_window_config(CameraCalibrationWindow, args=["--window", "pyglet"])
