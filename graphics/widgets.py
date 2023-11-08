@@ -9,7 +9,7 @@ def float3_widget(name, min, max, default_values=None):
     assert len(default_values) == 3
     value = list(default_values)
 
-    def widget(new_value):
+    def widget(new_value=None):
         nonlocal value
         
         if new_value is not None:

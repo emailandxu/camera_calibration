@@ -46,7 +46,7 @@ class CameraCalibrationWindow(Window):
             # _, q = mat2TQ( mat @ np.linalg.inv(mat_src) @ mat_target)
             q = mat2Q(mat[:3, :3].transpose())
             print(q[[3, 0, 1, 2]])
-            self.setCamera(t, q)
+            self.setAxis(t, q)
 
 
 
