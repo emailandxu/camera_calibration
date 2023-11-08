@@ -81,6 +81,33 @@ def mat2quat(mat):
     from scipy.spatial.transform import Rotation
     return Rotation.from_matrix(mat[:3, :3]).as_quat()
 
+
+def qvec2rotmat(qvec):
+    return np.array([
+        [1 - 2 * qvec[2]**2 - 2 * qvec[3]**2,
+         2 * qvec[1] * qvec[2] - 2 * qvec[0] * qvec[3],
+         2 * qvec[3] * qvec[1] + 2 * qvec[0] * qvec[2]],
+        [2 * qvec[1] * qvec[2] + 2 * qvec[0] * qvec[3],
+         1 - 2 * qvec[1]**2 - 2 * qvec[3]**2,
+         2 * qvec[2] * qvec[3] - 2 * qvec[0] * qvec[1]],
+        [2 * qvec[3] * qvec[1] - 2 * qvec[0] * qvec[2],
+         2 * qvec[2] * qvec[3] + 2 * qvec[0] * qvec[1],
+         1 - 2 * qvec[1]**2 - 2 * qvec[2]**2]])
+
+def rotmat2qvec(R):
+    Rxx, Ryx, Rzx, Rxy, Ryy, Rzy, Rxz, Ryz, Rzz = R.flat
+    K = np.array([
+        [Rxx - Ryy - Rzz, 0, 0, 0],
+        [Ryx + Rxy, Ryy - Rxx - Rzz, 0, 0],
+        [Rzx + Rxz, Rzy + Ryz, Rzz - Rxx - Ryy, 0],
+        [Ryz - Rzy, Rzx - Rxz, Rxy - Ryx, Rxx + Ryy + Rzz]]) / 3.0
+    eigvals, eigvecs = np.linalg.eigh(K)
+    qvec = eigvecs[[3, 0, 1, 2], np.argmax(eigvals)]
+    if qvec[0] < 0:
+        qvec *= -1
+    return qvec
+
+
 def posemat(trans, quat, scale=None):
     rotmat = quat2mat(quat) # 3x3
 
@@ -113,7 +140,11 @@ def checkerboard(width, repetitions) -> np.ndarray:
     return np.stack((check, check, check), axis=-1)
 
 if __name__ == "__main__":
-    from matplotlib import pyplot as plt
-    img = checkerboard(512, 5)
-    plt.imshow(img)
-    plt.show()
+    from scipy.spatial.transform import Rotation
+
+
+    # print(Rotation.from_quat([0, 0, 0, 1]).as_matrix())
+    # print(qvec2rotmat(np.array([1, 0, 0, 0])))
+
+    print(qvec2rotmat(rotmat2qvec(rotate_z(np.pi/2)[:3,:3] @ np.identity(3))))
+    print(Rotation.from_quat(Rotation.from_matrix(rotate_z(np.pi/2)[:3,:3] @ np.identity(3)).as_quat()).as_matrix())

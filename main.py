@@ -11,7 +11,7 @@ from moderngl_window import geometry, resources, run_window_config
 from moderngl_window.opengl.vao import VAO
 
 from graphics.base import WindowBase
-from graphics.utils.mathutil import spherical, posemat, lookAt, projection, quat2mat, mat2quat, rotate_x, rotate_y, rotate_z
+from graphics.utils.mathutil import *
 
 from util import pad_image_to_size
 from plyfile import PlyData, PlyElement
@@ -32,7 +32,7 @@ class FPSCamera():
         self.phi = np.pi * (1/5)
         self.speed = speed
         self.frame_t = 1.
-        self.dragable = True
+        self.dragable = False
 
     @property
     def oriental(self):
