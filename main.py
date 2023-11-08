@@ -28,9 +28,9 @@ def fetchPCD(path):
 
 class FPSCamera():
     def __init__(self, speed=0.5) -> None:
-        self.eye = np.array([0., 0., 1.])
+        self.eye = np.array([0., 1., 1.])
         self.theta = 0.
-        self.phi = np.pi/2
+        self.phi = np.pi * (1/5)
         self.speed = speed
 
     @property
@@ -62,13 +62,13 @@ class FPSCamera():
             elif key==100: # D
                 self.eye -= self.speed * np.cross(self.oriental, np.array([0.,1.,0.]))
             elif key==106: # J
-                self.theta+=0.1
+                self.theta+= 2 * self.speed
             elif key==108: # L
-                self.theta-=0.1
+                self.theta-= 2 * self.speed
             elif key==105: # J
-                self.phi+=0.1
+                self.phi+= 2 * self.speed
             elif key==107: # K
-                self.phi-=0.1
+                self.phi-= 2 * self.speed
             elif key==99: # C
                 self.eye[1]-= self.speed
             elif key==32: # Space
@@ -80,25 +80,34 @@ class FPSCamera():
         # print(x_offset, y_offset)
         self.eye += self.oriental * -y_offset * self.speed
 
+    def mouse_drag_event(self, x, y, dx, dy):
+        # print(x, y, dx, dy)
+        self.theta += -0.2 * self.speed * dx
+        self.phi += -0.2 * self.speed * dy
+
+
     def debug_gui(self):
         imgui.text(f"{self.eye.astype('f2')}")
         imgui.text(f"{np.rad2deg(self.theta):.4f}, {np.rad2deg(self.phi):.4f}")
 
 
 class XObjBase():
-    def __init__(self) -> None:
+    def __init__(self, name="undefined") -> None:
         self.scale = np.ones(3)
         self.trans = np.zeros(3) # x, y, z
         self.quat = np.array([0., 0., 0., 1.]) # x, y, z, w
         self.scale_offset = np.ones(3)
 
+        self.name = name
+        self.visible = True
+
     @property
     def posemat(self):
-        return posemat(self.trans, self.quat, self.scale * self.scale_offset)
+        return posemat(self.trans, self.quat, self.scale)
 
 class XObj(XObjBase):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, name="undefined") -> None:
+        super().__init__(name)
 
     def bind_vao(self, vao):
         self.vao = vao
@@ -110,6 +119,9 @@ class XObj(XObjBase):
         self.texture = texture
 
     def render(self, camera, vao=None, prog=None):
+        if not self.visible:
+            return
+
         assert hasattr(camera, "view")
         assert hasattr(camera, "proj")
         
@@ -140,46 +152,39 @@ class Window(WindowBase):
         super().__init__(ctx, wnd, timer, **kwargs)
         self.xobjs = []
         self.xtasks = {}
-        self.wfloat = float_widget("scale", 0.01, 1, 0.5)
+        self.wfloat = float_widget("speed", 0.01, 1, 0.5)
         self.wfloat3 = float3_widget("target", 0, 3, (1, 1, 1))
         self.camera = FPSCamera()
         self.default_prog = self.load_program("default.glsl")
         self.pcd_prog = self.load_program("pcd.glsl")
 
-    def setCamera(self, trans=None, quat=None, scale=None):
+        self.setGround()
+
+    def setCamera(self, trans, quat, name=None):
         x = np.array([0., 0., 0., 1., 0., 0.], dtype="f4")
         y = np.array([0., 0., 0., 0., 1., 0.], dtype="f4")
-        z = np.array([0., 0., 0., 0., 0., 1.], dtype="f4")
+        z = np.array([0., 0., 0., 0., 0., 1.], dtype="f4") 
 
-        r = np.array([[[255, 0, 0]]], dtype="u1")
-        g = np.array([[[0, 255, 0]]], dtype="u1")
-        b = np.array([[[255, 255, 255], [0, 0, 255]]], dtype="u1")
+        r = np.array([255, 0, 0] * 2, dtype="u1")
+        g = np.array([0, 255, 0] * 2, dtype="u1")
+        b = np.array([0, 0, 255] * 2, dtype="u1")
 
-        def make(vertices, tex):
-            xobj = XObj()
+        vertices = np.stack([x, y, z]).reshape(-1, 3)
+        colors = np.stack([r, g, b]).reshape(-1, 3)
 
-            vao = VAO(mode=mgl.LINES)
-            vao.buffer(np.array(vertices, dtype="f4"), '3f', 'in_position')
-            vao.buffer(np.array([0.0, 0.0, 1.0, 1.0], dtype='f4'), '2f', 'in_texcoord_0')
-            texture = self.ctx.texture(tex.shape[:2], tex.shape[2], data=tex)
+        xobj = XObj("axis" + (f"_{name}" if name else "") )
+        xobj.trans = trans
+        xobj.quat = quat
+        vao = VAO(mode=mgl.LINES)
+        vao.buffer(np.array(vertices, dtype="f4"), '3f', 'in_position')
+        vao.buffer(np.array(colors,  dtype="f4"), '3f', 'in_rgb')
 
-            xobj.bind_vao(vao)
-            xobj.bind_prog(self.default_prog)
-            xobj.bind_texture(texture)
-
-            xobj.scale = scale if scale is not None else np.array([1, 1, 1])
-            xobj.trans = trans if trans is not None else np.array([0, 0, -3])
-            xobj.quat = quat if quat is not None else np.array([0, 0, 0, 1])
-            return xobj
-        
-        self.xobjs.extend([
-            # make(x, r),
-            # make(y, g),
-            make(z, b)
-        ])
+        xobj.bind_vao(vao)
+        xobj.bind_prog(self.pcd_prog)       
+        self.xobjs.append(xobj)
     
-    def setPlane(self, tex, trans=None, quat=None, scale=None):
-        xobj = XObj()
+    def setPlane(self, tex, trans=None, quat=None, scale=None, name=None):
+        xobj = XObj("plane" + (f"_{name}" if name else ""))
 
         vao = geometry.quad_fs()
         texture = self.ctx.texture(tex.shape[:2], tex.shape[2], data=np.ascontiguousarray(tex[::-1]))
@@ -194,9 +199,8 @@ class Window(WindowBase):
 
         self.xobjs.append(xobj)
     
-
-    def setPoints(self, points, rgbs, trans=None, quat=None, scale=None):
-        xobj = XObj()
+    def setPoints(self, points, rgbs, trans=None, quat=None, scale=None, name=None):
+        xobj = XObj("points" + (f"_{name}" if name else ""))
         vao = VAO(mode=mgl.POINTS)
         vao.buffer(np.array(points, dtype="f4"), "3f", "in_position")
         vao.buffer(np.array(rgbs, dtype="f4"), "3f", "in_rgb")
@@ -210,6 +214,37 @@ class Window(WindowBase):
 
         self.xobjs.append(xobj)
 
+    def setGround(self, width=10, height=10, grid=100):
+        x = np.linspace(-width//2, +width//2, grid)
+        y = np.zeros_like(x)
+        z_forward = np.ones_like(x) * height // 2
+        z_backward = np.ones_like(x) * -height // 2
+        forward = np.stack([x, y, z_forward], axis=-1)
+        backward = np.stack([x, y, z_backward], axis=-1)
+
+        z = np.linspace(-width//2, +width//2, grid)
+        y = np.zeros_like(z)
+        x_left = np.ones_like(z) * -width // 2
+        x_right = np.ones_like(z) * width // 2
+        left = np.stack([x_left, y, z], axis=-1)
+        right = np.stack([x_right, y, z], axis=-1)
+
+        vertices = np.zeros((grid*4, 3))
+        vertices[0::4] = forward
+        vertices[1::4] = backward
+        vertices[2::4] = left
+        vertices[3::4] = right
+
+        xobj = XObj("ground")
+        vao = VAO(mode=mgl.LINES)
+        vao.buffer(np.array(vertices, dtype="f4"), '3f', 'in_position')
+        vao.buffer(np.array(np.ones_like(vertices),  dtype="f4"), '3f', 'in_rgb')
+
+        xobj.bind_vao(vao)
+        xobj.bind_prog(self.pcd_prog)       
+        self.xobjs.append(xobj)
+
+
     def key_event(self, key, action, modifiers):
         super().key_event(key, action, modifiers)
         if action=="ACTION_PRESS":
@@ -220,13 +255,17 @@ class Window(WindowBase):
     def mouse_scroll_event(self, x_offset, y_offset):
         super().mouse_scroll_event(x_offset, y_offset)
         self.camera.mouse_scroll_event(x_offset, y_offset)
+
+    def mouse_drag_event(self, x, y, dx, dy):
+        super().mouse_drag_event(x, y, dx, dy)
+        self.camera.mouse_drag_event(x, y, dx, dy)
     
     def xrender(self, t, frame_t):
         imgui.text(f"{1/frame_t:.4f}")
         self.camera.debug_gui()
 
-        scale = self.wfloat()
-        self.camera.speed = scale if scale < self.camera.speed else self.camera.speed
+        imgui.text(f"\n".join(map(lambda xobj:xobj.name, self.xobjs)))
+        self.camera.speed = self.wfloat() * frame_t
 
         assert len(self.xobjs) > 0
 
@@ -235,7 +274,6 @@ class Window(WindowBase):
 
         for xobj in self.xobjs:
             # xobj.quat = mat2quat(rotate_x(t) @ rotate_y(t))
-            xobj.scale_offset =  np.ones(3) * scale
             xobj.render(self.camera)
 
 
