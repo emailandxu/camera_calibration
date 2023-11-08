@@ -32,7 +32,8 @@ class FPSCamera():
         self.theta = 0.
         self.phi = np.pi * (1/5)
         self.speed = speed
-        self.dragable = False
+        self.frame_t = 1.
+        self.dragable = True
 
     @property
     def oriental(self):
@@ -55,25 +56,25 @@ class FPSCamera():
     def key_event(self, key, action, modifiers):
         if action == "ACTION_PRESS":
             if key == 119: # W
-                self.eye -= self.speed * self.oriental
+                self.eye -= self.frame_t * self.speed * self.oriental
             elif key==97: # A
-                self.eye += self.speed * np.cross(self.oriental, np.array([0.,1.,0.]))
+                self.eye += self.frame_t * self.speed * np.cross(self.oriental, np.array([0.,1.,0.]))
             elif key==115: # S
-                self.eye += self.speed * self.oriental
+                self.eye += self.frame_t * self.speed * self.oriental
             elif key==100: # D
-                self.eye -= self.speed * np.cross(self.oriental, np.array([0.,1.,0.]))
+                self.eye -= self.frame_t * self.speed * np.cross(self.oriental, np.array([0.,1.,0.]))
             elif key==106: # J
-                self.theta+= 0.02
+                self.theta+= self.frame_t
             elif key==108: # L
-                self.theta-= 0.02
+                self.theta-= self.frame_t
             elif key==105: # J
-                self.phi+= 0.02
+                self.phi+= self.frame_t
             elif key==107: # K
-                self.phi-= 0.02
+                self.phi-= self.frame_t
             elif key==99: # C
-                self.eye[1]-= self.speed
+                self.eye[1]-= self.frame_t * self.speed
             elif key==32: # Space
-                self.eye[1]+= self.speed
+                self.eye[1]+= self.frame_t * self.speed
             else:
                 print(key)
     
@@ -84,8 +85,8 @@ class FPSCamera():
     def mouse_drag_event(self, x, y, dx, dy):
         if self.dragable:
             # print(x, y, dx, dy)
-            self.theta += -0.2 * self.speed * dx
-            self.phi += -0.2 * self.speed * dy
+            self.theta += 0.2 * -self.frame_t * dx
+            self.phi += 0.2 * -self.frame_t * dy
 
 
     def debug_gui(self):
@@ -159,8 +160,6 @@ class Window(WindowBase):
         self.camera = FPSCamera()
         self.default_prog = self.load_program("default.glsl")
         self.pcd_prog = self.load_program("pcd.glsl")
-
-        self.setGround()
 
     def registerCamera(self, trans:np.ndarray, quat:np.ndarray, length=1.):
         if not hasattr(self, "_axisVC"):
@@ -285,11 +284,13 @@ class Window(WindowBase):
     
     def xrender(self, t, frame_t):
         imgui.text(f"{1/frame_t:.4f}")
-        self.camera.speed = self.wfloat() * frame_t
+        self.camera.speed = self.wfloat()
+        self.camera.frame_t = frame_t
         self.camera.debug_gui()
 
-        for xobj in self.xobjs:
-            imgui.text(xobj.name)
+        for idx, xobj in enumerate(self.xobjs):
+            # imgui.text(xobj.name)
+            _, xobj.visible = imgui.checkbox(str(idx) + ":" + xobj.name, xobj.visible)
             imgui.same_line()
 
         assert len(self.xobjs) > 0
