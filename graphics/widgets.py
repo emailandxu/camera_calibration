@@ -2,6 +2,29 @@ import imgui
 import numpy as np
 from .utils.mathutil import projection, lookAt
 
+
+def float4_widget(name, min, max, default_values=None):
+    if default_values is None:
+        default_values = (0, 0, 0, 0)
+
+    assert len(default_values) == 4
+    value = list(default_values)
+
+    def widget(new_value=None):
+        nonlocal value
+        
+        if new_value is not None:
+            value = new_value
+        
+        _, value[:] = imgui.slider_float4(f"{name}", *value, min, max, format="%.4f")
+
+        imgui.same_line()
+        if imgui.button(f"reset {name}"):
+            value = list(default_values)
+        return value
+
+    return widget
+
 def float3_widget(name, min, max, default_values=None):
     if default_values is None:
         default_values = (0, 0, 0)

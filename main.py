@@ -11,7 +11,6 @@ from moderngl_window import geometry, resources, run_window_config
 from moderngl_window.opengl.vao import VAO
 
 from graphics.base import WindowBase
-from graphics.widgets import float_widget, bool_widget, float3_widget
 from graphics.utils.mathutil import spherical, posemat, lookAt, projection, quat2mat, mat2quat, rotate_x, rotate_y, rotate_z
 
 from util import pad_image_to_size
@@ -47,7 +46,7 @@ class FPSCamera():
     @property
     @lru_cache(maxsize=-1)
     def proj(self):
-        return projection(fov=60, near=0.001)
+        return projection(fov=45, near=0.001)
 
     @property
     def view(self):
@@ -85,14 +84,14 @@ class FPSCamera():
     def mouse_drag_event(self, x, y, dx, dy):
         if self.dragable:
             # print(x, y, dx, dy)
-            self.theta += 0.2 * -self.frame_t * dx
-            self.phi += 0.2 * -self.frame_t * dy
+            self.theta += 0.5 * -self.frame_t * dx
+            self.phi += 0.5 * -self.frame_t * dy
 
 
     def debug_gui(self):
+        _, self.dragable = imgui.checkbox("camera_drag", self.dragable)
         imgui.text(f"{self.eye.astype('f2')}")
         imgui.text(f"{np.rad2deg(self.theta):.4f}, {np.rad2deg(self.phi):.4f}")
-
 
 class XObjBase():
     def __init__(self, name="undefined") -> None:
@@ -155,15 +154,12 @@ class Window(WindowBase):
         super().__init__(ctx, wnd, timer, **kwargs)
         self.xobjs = []
         self.xtasks = {}
-        self.wfloat = float_widget("speed", 0.01, 1, 0.5)
-        self.wfloat3 = float3_widget("target", 0, 3, (1, 1, 1))
         self.camera = FPSCamera()
         self.default_prog = self.load_program("default.glsl")
         self.pcd_prog = self.load_program("pcd.glsl")
 
-    def registerCamera(self, trans:np.ndarray, quat:np.ndarray, length=1.):
-        if not hasattr(self, "_axisVC"):
-            self._axisVC = []
+    def registerCamera(self, vc, trans:np.ndarray, quat:np.ndarray, length=1.):
+
 
         vertices = np.array([0., 0., 0., -length, 0., 0.,
                                 0., 0., 0., 0., length, 0.,
@@ -172,12 +168,9 @@ class Window(WindowBase):
                             0, 255, 0, 0, 255, 0,
                             0, 0, 255, 0, 0, 255], dtype="u1").reshape(-1, 3)
         vertices = (quat2mat(quat) @ vertices.T).T + trans
-        self._axisVC.append((vertices, colors))
+        vc.append((vertices, colors))
 
-    def registerAxis(self, trans:np.ndarray, quat:np.ndarray, length=1.):
-        if not hasattr(self, "_axisVC"):
-            self._axisVC = []
-
+    def registerAxis(self, vc, trans:np.ndarray, quat:np.ndarray, length=1.):
         vertices = np.array([0., 0., 0., length, 0., 0.,
                                 0., 0., 0., 0., length, 0.,
                                 0., 0., 0., 0., 0., length], dtype="f4").reshape(-1, 3)
@@ -185,14 +178,14 @@ class Window(WindowBase):
                             0, 255, 0, 0, 255, 0,
                             0, 0, 255, 0, 0, 255], dtype="u1").reshape(-1, 3)
         vertices = (quat2mat(quat) @ vertices.T).T + trans
-        self._axisVC.append((vertices, colors))
+        vc.append((vertices, colors))
 
-    def setAxis(self, name=None):
+    def setAxis(self, vc, name=None):
         xobj = XObj("axis" + (f"_{name}" if name else "") )
         vao = VAO(mode=mgl.LINES)
 
-        vertices = np.concatenate([v for v,_ in self._axisVC], axis=0)
-        colors = np.concatenate([c for _, c in self._axisVC], axis=0)
+        vertices = np.concatenate([v for v,_ in vc], axis=0)
+        colors = np.concatenate([c for _, c in vc], axis=0)
 
         vao.buffer(np.array(vertices, dtype="f4"), '3f', 'in_position')
         vao.buffer(np.array(colors,  dtype="f4"), '3f', 'in_rgb')
@@ -284,7 +277,6 @@ class Window(WindowBase):
     
     def xrender(self, t, frame_t):
         imgui.text(f"{1/frame_t:.4f}")
-        self.camera.speed = self.wfloat()
         self.camera.frame_t = frame_t
         self.camera.debug_gui()
 
