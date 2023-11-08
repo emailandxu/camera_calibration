@@ -26,11 +26,11 @@ class ShowCamera(Window):
 
         # =================== COLMAP ========================
         scale = 0.01
-        pts, rgbs = fetchPCD("db/avenue-cubic/sparse/0/points3D.ply")
+        pts, rgbs = fetchPCD("resources/avenue/points3D.ply")
         self.pcd1_xobj = self.setPoints(pts, rgbs, trans=[0, 0, 0], quat=[0, 0, 0, 1], scale=np.ones(3) * scale)
 
         vc = []
-        for key, mat in from_colmap("db/avenue-cubic/sparse/0/images.txt", "db/avenue-cubic/images").items():
+        for key, mat in from_colmap("resources/avenue/images.txt", "").items():
             mat = np.array(mat)
             t, q = mat[:3, 3], Rotation.from_matrix(mat[:3, :3]).as_quat()
             t = t
@@ -40,11 +40,11 @@ class ShowCamera(Window):
 
         # =================== OPENMVG ========================
         offset = np.array([0.5, 0.5, -0.3])
-        pts, rgbs = fetchPCD("db/avenue/output/reconstruction_global/colorized.ply")
+        pts, rgbs = fetchPCD("resources/avenue/colorized.ply")
         self.pcd2_xobj = self.setPoints(pts + offset, rgbs, trans=[0, 0, 0], quat=[0, 0, 0, 1])
 
         vc = []
-        for key, mat in from_openmvg("db/avenue/output/reconstruction_global/sfm_data.json", "db/avenue/input").items():
+        for key, mat in from_openmvg("resources/avenue/sfm_data.json", "").items():
             # if not os.path.exists(os.path.join("db/avenue/output/images", key)): continue
             mat = np.array(mat)
             t, q = mat[:3, 3], Rotation.from_matrix(mat[:3, :3]).as_quat()
@@ -80,4 +80,4 @@ class ShowCamera(Window):
 
 
 if __name__ == "__main__":
-    run_window_config(ShowCamera)
+    run_window_config(ShowCamera, args=["--window", "pygame2"])

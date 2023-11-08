@@ -53,29 +53,28 @@ class FPSCamera():
         return lookAt(eye=self.eye, at=self.eye-self.look_target, up=np.array([0, 1, 0]))
 
     def key_event(self, key, action, modifiers):
-        if action == "ACTION_PRESS":
-            if key == 119: # W
-                self.eye -= self.frame_t * self.speed * self.oriental
-            elif key==97: # A
-                self.eye += self.frame_t * self.speed * np.cross(self.oriental, np.array([0.,1.,0.]))
-            elif key==115: # S
-                self.eye += self.frame_t * self.speed * self.oriental
-            elif key==100: # D
-                self.eye -= self.frame_t * self.speed * np.cross(self.oriental, np.array([0.,1.,0.]))
-            elif key==106: # J
-                self.theta+= self.frame_t
-            elif key==108: # L
-                self.theta-= self.frame_t
-            elif key==105: # J
-                self.phi+= self.frame_t
-            elif key==107: # K
-                self.phi-= self.frame_t
-            elif key==99: # C
-                self.eye[1]-= self.frame_t * self.speed
-            elif key==32: # Space
-                self.eye[1]+= self.frame_t * self.speed
-            else:
-                print(key)
+        if key == 119: # W
+            self.eye -= self.frame_t * self.speed * self.oriental
+        elif key==97: # A
+            self.eye += self.frame_t * self.speed * np.cross(self.oriental, np.array([0.,1.,0.]))
+        elif key==115: # S
+            self.eye += self.frame_t * self.speed * self.oriental
+        elif key==100: # D
+            self.eye -= self.frame_t * self.speed * np.cross(self.oriental, np.array([0.,1.,0.]))
+        elif key==106: # J
+            self.theta+= self.frame_t
+        elif key==108: # L
+            self.theta-= self.frame_t
+        elif key==105: # J
+            self.phi+= self.frame_t
+        elif key==107: # K
+            self.phi-= self.frame_t
+        elif key==99: # C
+            self.eye[1]-= self.frame_t * self.speed
+        elif key==32: # Space
+            self.eye[1]+= self.frame_t * self.speed
+        else:
+            print(key)
     
     def mouse_scroll_event(self, x_offset, y_offset):
         # print(x_offset, y_offset)
@@ -159,8 +158,6 @@ class Window(WindowBase):
         self.pcd_prog = self.load_program("pcd.glsl")
 
     def registerCamera(self, vc, trans:np.ndarray, quat:np.ndarray, length=1.):
-
-
         vertices = np.array([0., 0., 0., -length, 0., 0.,
                                 0., 0., 0., 0., length, 0.,
                                 0., 0., 0., 0., 0., -length], dtype="f4").reshape(-1, 3)
@@ -262,10 +259,13 @@ class Window(WindowBase):
 
     def key_event(self, key, action, modifiers):
         super().key_event(key, action, modifiers)
-        if action=="ACTION_PRESS":
+        # pyglet and pygame2 tested
+        if action=="ACTION_PRESS" or action == 768:
             self.xtasks[key] = lambda : self.camera.key_event(key, action, modifiers)
-        else:
+        elif key in self.xtasks:
             self.xtasks.pop(key)
+        else:
+            print(key, action)
 
     def mouse_scroll_event(self, x_offset, y_offset):
         super().mouse_scroll_event(x_offset, y_offset)
