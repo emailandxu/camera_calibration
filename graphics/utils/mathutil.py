@@ -127,12 +127,12 @@ def posemat(trans, quat, scale=None):
     ]) @ scale_mat).astype("f4")
 
 def spherical(theta, phi, radius):
+    # https://community.khronos.org/t/moving-the-camera-using-spherical-coordinates/49549
     # theta = np.radians(theta)
     # phi = np.radians(phi)
-    x = radius * np.sin(phi) * np.cos(theta)
-    y = radius * np.sin(phi) * np.sin(theta)
-    z = radius * np.cos(phi)
-    x, y, z = y, z, x 
+    y = radius * np.sin(phi)
+    x = radius * np.cos(phi) * np.cos(theta)
+    z = radius * np.cos(phi) * np.sin(theta)
     return x, y, z
 
 def cartesian(x,y,z, radius=1):

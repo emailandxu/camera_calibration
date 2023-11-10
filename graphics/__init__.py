@@ -10,7 +10,7 @@ from moderngl_window.opengl.vao import VAO
 
 from .xobj import XObj
 from .base import WindowBase
-from .camera import FPSCamera
+from .camera import FPSCamera, Camera
 
 from .utils.mathutil import *
 from .utils.meshutil import makeCoord, applyMat
@@ -136,6 +136,8 @@ class Window(WindowBase):
             # imgui.text(xobj.name)
             _, xobj.visible = imgui.checkbox(str(idx) + ":" + xobj.name, xobj.visible)
             imgui.same_line()
+        # for above same line
+        imgui.text("")
 
         assert len(self.xobjs) > 0
 
