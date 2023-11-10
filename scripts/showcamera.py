@@ -3,16 +3,9 @@ import sys; sys.path.append("./")
 from graphics import *
 
 import moderngl as mgl
-from plyfile import PlyData, PlyElement
-from sfmparser import from_openmvg, from_colmap
+from sfmparser import from_openmvg, from_colmap, fetchPCD
 from scipy.spatial.transform import Rotation
 
-def fetchPCD(path):
-    plydata = PlyData.read(path)
-    vertices = plydata['vertex']
-    positions = np.vstack([vertices['x'], vertices['y'], vertices['z']]).T
-    colors = np.vstack([vertices['red'], vertices['green'], vertices['blue']]).T / 255.0
-    return positions, colors
 
 class ShowCamera(Window):
     def __init__(self, ctx: "Context" = None, wnd: "BaseWindow" = None, timer: "BaseTimer" = None, **kwargs):

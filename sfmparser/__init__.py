@@ -1,6 +1,8 @@
 import os
 import numpy as np
 from scipy.spatial.transform import Rotation
+from plyfile import PlyData, PlyElement
+
 from .camera_parser import parse
 
 def pose2mat(t, R):
@@ -12,9 +14,18 @@ def pose2mat(t, R):
     ], dtype="f4")
 
 def from_colmap(path, root_path=""):
+
+    def colmap_viewmat(t, R):
+        return np.array([
+            [*R[0], t[0]],
+            [*R[1], t[1]],
+            [*R[2], t[2]],
+            [ 0, 0, 0, 1]
+        ], dtype="f4")
+
     """sparse/images.txt"""
     cameras = parse(open(path))
-    poses = dict(map(lambda c: (os.path.join(root_path, c.name), pose2mat(
+    poses = dict(map(lambda c: (os.path.join(root_path, c.name), colmap_viewmat(
         c.trans,
         Rotation.from_quat([*c.quat[1:], c.quat[0]]).as_matrix()
     )), cameras))
@@ -33,6 +44,15 @@ def from_openmvg(path, images=""):
         o['value']['center'], o['value']['rotation']
     )), obj['extrinsics']))
     return poses
+
+def fetchPCD(path):
+    """return positions and color"""
+    plydata = PlyData.read(path)
+    vertices = plydata['vertex']
+    positions = np.vstack([vertices['x'], vertices['y'], vertices['z']]).T
+    colors = np.vstack([vertices['red'], vertices['green'], vertices['blue']]).T / 255.0
+    return positions, colors
+
 
 if __name__ == "__main__":
     # poses = from_colmap("/data1/xushuli/git-repo/gaussian-splatting/db/fan/sparse/images.txt")

@@ -17,6 +17,15 @@ class Camera():
     @property
     def view(self):
         return self._view
+    
+    @property
+    def center(self):
+        #according to https://openmvg.readthedocs.io/en/latest/openMVG/cameras/cameras/
+        view = self._view
+        R = view[:3, :3]
+        t = view[:3, 3]
+        C = -R.transpose() @ t # camera_center
+        return C
 
     def key_event(self, key, action, modifiers):
         pass
@@ -28,4 +37,5 @@ class Camera():
         pass
 
     def debug_gui(self, t, frame_t):
-        pass
+        import imgui
+        imgui.text(f"camera center: {self.center}")

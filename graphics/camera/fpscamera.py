@@ -47,6 +47,10 @@ class FPSCamera(Camera):
             self.eye[1]-= self.frame_t * self.speed
         elif key==32: # Space
             self.eye[1]+= self.frame_t * self.speed
+        elif key==46: # >
+            self.speed+=self.frame_t
+        elif key==44: # <
+            self.speed-=self.frame_t
         else:
             print(key)
     
@@ -66,7 +70,7 @@ class FPSCamera(Camera):
         self.frame_t = frame_t
         if not hasattr(self, "wspeed"):
             self.wspeed = float_widget("speed", 0.01, 1, 0.1)
-        self.speed = self.wspeed()
+        self.speed = self.wspeed(self.speed)
         _, self.dragable = imgui.checkbox("camera_drag", self.dragable)
         imgui.text(f"{self.eye.astype('f2')}")
         imgui.text(f"{np.rad2deg(self.theta):.4f}, {np.rad2deg(self.phi):.4f}")
