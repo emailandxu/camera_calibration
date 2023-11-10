@@ -26,7 +26,8 @@ class Window(WindowBase):
         self.pcd_prog = self.load_program("pcd.glsl")
 
     def setAxis(self, vertices:List[np.ndarray], colors:np.ndarray=None, name=None):
-        """assume vertices and colors in shape (n, 3, 6) """
+        """assume vertices and colors in shape (n, 3, 6),
+         axis is defined by three six point from 3 point3 to to 3 point3 """
 
         vertices = np.concatenate(vertices, axis=0).reshape(-1, 3, 6)
         assert len(vertices.shape) == 3 and vertices.shape[1:] == (3, 6)
