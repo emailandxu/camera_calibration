@@ -4,12 +4,12 @@ from scipy.spatial.transform import Rotation
 from .camera_parser import parse
 
 def pose2mat(t, R):
-    return [
+    return np.array([
         [*R[0], t[0]],
         [*R[1], t[1]],
         [*R[2], t[2]],
         [ 0, 0, 0, 1]
-    ]
+    ], dtype="f4")
 
 def from_colmap(path, root_path=""):
     """sparse/images.txt"""

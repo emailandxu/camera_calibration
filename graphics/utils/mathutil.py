@@ -68,7 +68,8 @@ def lookAt(eye, at, up):
                         [v[0], v[1], v[2], 0], 
                         [w[0], w[1], w[2], 0], 
                         [0, 0, 0, 1]]).astype(np.float32)
-    return np.matmul(rotate, translate)
+    # return np.matmul(rotate, translate)
+    return rotate @ translate
 
 def quat2mat(quat):
     """
@@ -133,6 +134,11 @@ def spherical(theta, phi, radius):
     z = radius * np.cos(phi)
     x, y, z = y, z, x 
     return x, y, z
+
+def cartesian(x,y,z, radius=1):
+    phi = np.arccos(z/radius)
+    theta = np.arccos(x/(np.arcsin(radius*np.sin(phi))))
+    return theta, phi
 
 def checkerboard(width, repetitions) -> np.ndarray:
     tilesize = int(width//repetitions//2)
