@@ -2,6 +2,16 @@ import torch
 import trimesh
 import numpy as np
 
+def makeCoord():
+    origin = np.zeros((1, 3, 3))
+    axis = np.identity(3)[np.newaxis, :]
+    vertices = np.concatenate([origin, axis], axis=-1)
+    return vertices.reshape(-1, 3)
+
+def applyMat(mat, vertices):
+    h_vertices = np.concatenate([vertices, np.ones_like(vertices[..., [0]])], axis=-1)
+    return ( mat @ h_vertices.T).T[..., :3]
+
 def dot(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     return torch.sum(x*y, -1, keepdim=True)
 

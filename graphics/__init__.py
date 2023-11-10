@@ -1,4 +1,5 @@
 
+from typing import List
 import imgui
 import numpy as np
 
@@ -12,6 +13,7 @@ from .base import WindowBase
 from .camera import FPSCamera
 
 from .utils.mathutil import *
+from .utils.meshutil import makeCoord, applyMat
 from .widgets import *
 
 class Window(WindowBase):
@@ -23,32 +25,18 @@ class Window(WindowBase):
         self.default_prog = self.load_program("default.glsl")
         self.pcd_prog = self.load_program("pcd.glsl")
 
-    def registerCamera(self, vc, trans:np.ndarray, quat:np.ndarray, length=1.):
-        vertices = np.array([0., 0., 0., length, 0., 0.,
-                                0., 0., 0., 0., length, 0.,
-                                0., 0., 0., 0., 0., length], dtype="f4").reshape(-1, 3)
-        colors = np.array([ 255, 0, 255, 255, 0, 255,
-                            0, 255, 0, 0, 255, 0,
-                            0, 0, 255, 0, 0, 255], dtype="u1").reshape(-1, 3)
-        vertices = (quat2mat(quat).transpose() @ vertices.T).T - trans
-        vc.append((vertices, colors))
+    def setAxis(self, vertices:List[np.ndarray], colors:np.ndarray=None, name=None):
+        """assume vertices and colors in shape (n, 3, 6) """
 
-    def registerAxis(self, vc, trans:np.ndarray, quat:np.ndarray, length=1.):
-        vertices = np.array([0., 0., 0., length, 0., 0.,
-                                0., 0., 0., 0., length, 0.,
-                                0., 0., 0., 0., 0., length], dtype="f4").reshape(-1, 3)
-        colors = np.array([ 255, 0, 0, 255, 0, 0,
-                            0, 255, 0, 0, 255, 0,
-                            0, 0, 255, 0, 0, 255], dtype="u1").reshape(-1, 3)
-        vertices = (quat2mat(quat) @ vertices.T).T + trans
-        vc.append((vertices, colors))
+        vertices = np.concatenate(vertices, axis=0).reshape(-1, 3, 6)
+        assert len(vertices.shape) == 3 and vertices.shape[1:] == (3, 6)
 
-    def setAxis(self, vc, name=None):
+        if colors is None:
+            n = vertices.shape[0]
+            colors = np.array([[[1, 0, 0] * 2, [0, 1, 0] * 2, [0, 0, 1] * 2]], dtype="f4").repeat(n, axis=0) # n x 3 x 6
+
         xobj = XObj("axis" + (f"_{name}" if name else "") )
         vao = VAO(mode=mgl.LINES)
-
-        vertices = np.concatenate([v for v,_ in vc], axis=0)
-        colors = np.concatenate([c for _, c in vc], axis=0)
 
         vao.buffer(np.array(vertices, dtype="f4"), '3f', 'in_position')
         vao.buffer(np.array(colors,  dtype="f4"), '3f', 'in_rgb')
