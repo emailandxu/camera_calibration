@@ -5,16 +5,8 @@ from plyfile import PlyData, PlyElement
 
 from .camera_parser import parse
 
-def pose2mat(t, R):
-    return np.array([
-        [*R[0], t[0]],
-        [*R[1], t[1]],
-        [*R[2], t[2]],
-        [ 0, 0, 0, 1]
-    ], dtype="f4")
-
 def from_colmap(path, root_path=""):
-    """sparse/images.txt"""
+    """sparse/images.txt, trans, rotmat"""
     cameras = parse(open(path))
 
     return list(map(lambda c: (
@@ -22,7 +14,7 @@ def from_colmap(path, root_path=""):
     ), cameras))
 
 def from_openmvg(path, images=""):
-    """reconstruction_global/sfm-data.json"""
+    """reconstruction_global/sfm-data.json, center, rotmat"""
     import json
     obj = json.load(open(path))
     filemap = dict(map(

@@ -3,12 +3,6 @@ from graphics import *
 from sfmparser import from_openmvg, from_colmap, fetchPCD
 import os
 
-
-def rotmat2mat(rotmat):
-    mat = np.identity(4)
-    mat[:3, :3] = rotmat
-    return mat
-
 def colmap_pcd_with_W2Cs():
     keys = []
     transes = []
@@ -32,7 +26,7 @@ def colmap_pcd_with_W2Cs():
 
     W2Cs = np.array(W2Cs)
     pcd_points, pcd_colors = fetchPCD("db/avenue-cubic/sparse/0/points3D.ply")
-    return (pcd_points, pcd_colors, W2Cs)
+    return (pcd_points, pcd_colors, W2Cs, keys)
 
 def openmvg_pcd_with_W2Cs():
     def fetchPCD(path):
@@ -64,7 +58,7 @@ def openmvg_pcd_with_W2Cs():
 
     for center, orientaion in zip(centers, orientaions):
         R = np.identity(4)
-        R[:3, :3] = orientaion.transpose()
+        R[:3, :3] = orientaion #.transpose() # this is transpose
         T = np.identity(4)
         T[:3, 3] = -center
         W2C = R @ T
@@ -74,7 +68,7 @@ def openmvg_pcd_with_W2Cs():
     pcd_points, pcd_colors = fetchPCD("db/avenue/output/reconstruction_global/colorized.ply")
 
     
-    return (pcd_points, pcd_colors, W2Cs)
+    return (pcd_points, pcd_colors, W2Cs, keys)
 
 def pcd_with_W2Cs():
     return openmvg_pcd_with_W2Cs()
@@ -89,7 +83,7 @@ class Temp(Window):
         self.simple_camera = Camera() 
         self.wfpscamera = bool_widget("fpscamera", False)
 
-        self.pcd_points, self.pcd_colors, self.W2Cs = pcd_with_W2Cs()
+        self.pcd_points, self.pcd_colors, self.W2Cs, self.keys = pcd_with_W2Cs()
         
         self.wsimple_camera_index = int_widget("cam_index", 0, len(self.W2Cs)-1, 0)
 
@@ -107,7 +101,9 @@ class Temp(Window):
         if self.wfpscamera():
             self.camera = self.fpscamera
         else:
-            self.simple_camera._view = self.W2Cs[self.wsimple_camera_index()]
+            index = self.wsimple_camera_index()
+            imgui.text(self.keys[index])
+            self.simple_camera._view = self.W2Cs[index]
             self.camera = self.simple_camera
     
         super().xrender(t, frame_t)
