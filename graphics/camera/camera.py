@@ -2,6 +2,29 @@ import numpy as np
 from functools import lru_cache
 from graphics.utils.mathutil import projection
 
+def getProjectionMatrix(znear=0.01, zfar=100, fovX=1.57, fovY=1.57):
+    import math
+    tanHalfFovY = math.tan((fovY / 2))
+    tanHalfFovX = math.tan((fovX / 2))
+
+    top = tanHalfFovY * znear
+    bottom = -top
+    right = tanHalfFovX * znear
+    left = -right
+
+    P = np.zeros((4, 4))
+
+    z_sign = 1.0
+
+    P[0, 0] = 2.0 * znear / (right - left)
+    P[1, 1] = 2.0 * znear / (top - bottom)
+    P[0, 2] = (right + left) / (right - left)
+    P[1, 2] = (top + bottom) / (top - bottom)
+    P[3, 2] = z_sign
+    P[2, 2] = z_sign * zfar / (zfar - znear)
+    P[2, 3] = -(zfar * znear) / (zfar - znear)
+    return P
+
 class Camera():
     def __init__(self) -> None:
         self._view = np.identity(4)
@@ -12,7 +35,8 @@ class Camera():
     @property
     @lru_cache(maxsize=-1)
     def proj(self):
-        return projection(fov=45, near=0.001)
+        # return projection(fov=45, near=0.001)
+        return getProjectionMatrix()
 
     @property
     def view(self):

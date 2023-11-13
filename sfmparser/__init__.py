@@ -14,22 +14,12 @@ def pose2mat(t, R):
     ], dtype="f4")
 
 def from_colmap(path, root_path=""):
-
-    def colmap_viewmat(t, R):
-        return np.array([
-            [*R[0], t[0]],
-            [*R[1], t[1]],
-            [*R[2], t[2]],
-            [ 0, 0, 0, 1]
-        ], dtype="f4")
-
     """sparse/images.txt"""
     cameras = parse(open(path))
-    poses = dict(map(lambda c: (os.path.join(root_path, c.name), colmap_viewmat(
-        c.trans,
-        Rotation.from_quat([*c.quat[1:], c.quat[0]]).as_matrix()
-    )), cameras))
-    return poses
+
+    return list(map(lambda c: (
+        os.path.join(root_path, c.name), c.trans, Rotation.from_quat([*c.quat[1:], c.quat[0]]).as_matrix()
+    ), cameras))
 
 def from_openmvg(path, images=""):
     """reconstruction_global/sfm-data.json"""
@@ -40,9 +30,8 @@ def from_openmvg(path, images=""):
                    v["value"]["ptr_wrapper"]["data"]["filename"]),
         obj["views"]
     ))
-    poses = dict(map(lambda o: (os.path.join(images, filemap[o['key']]), pose2mat(
-        o['value']['center'], o['value']['rotation']
-    )), obj['extrinsics']))
+    poses = [ (os.path.join(images, filemap[o['key']]), o['value']['center'], o['value']['rotation']) 
+             for o in obj['extrinsics'] ]
     return poses
 
 def fetchPCD(path):

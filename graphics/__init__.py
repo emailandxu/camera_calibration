@@ -13,7 +13,7 @@ from .base import WindowBase
 from .camera import FPSCamera, Camera
 
 from .utils.mathutil import *
-from .utils.meshutil import makeCoord, applyMat
+from .utils.meshutil import makeCoord, makeGround, applyMat
 from .widgets import *
 
 class Window(WindowBase):
@@ -58,7 +58,7 @@ class Window(WindowBase):
         xobj.bind_texture(texture)
 
         xobj.scale = scale if scale is not None else np.array([1, 1, 1])
-        xobj.trans = trans if trans is not None else np.array([0, 0, -3])
+        xobj.trans = trans if trans is not None else np.array([0, 0, 0])
         xobj.quat = quat if quat is not None else np.array([0, 0, 0, 1])
 
         self.xobjs.append(xobj)
@@ -74,38 +74,23 @@ class Window(WindowBase):
         xobj.bind_prog(self.pcd_prog)
 
         xobj.scale = scale if scale is not None else np.array([1, 1, 1])
-        xobj.trans = trans if trans is not None else np.array([0, 0, -3])
+        xobj.trans = trans if trans is not None else np.array([0, 0, 0])
         xobj.quat = quat if quat is not None else np.array([0, 0, 0, 1])
 
         self.xobjs.append(xobj)
         return xobj
 
-    def setGround(self, width=10, height=10, grid=100):
-        x = np.linspace(-width//2, +width//2, grid)
-        y = np.zeros_like(x)
-        z_forward = np.ones_like(x) * height // 2
-        z_backward = np.ones_like(x) * -height // 2
-        forward = np.stack([x, y, z_forward], axis=-1)
-        backward = np.stack([x, y, z_backward], axis=-1)
-
-        z = np.linspace(-width//2, +width//2, grid)
-        y = np.zeros_like(z)
-        x_left = np.ones_like(z) * -width // 2
-        x_right = np.ones_like(z) * width // 2
-        left = np.stack([x_left, y, z], axis=-1)
-        right = np.stack([x_right, y, z], axis=-1)
-
-        vertices = np.zeros((grid*4, 3))
-        vertices[0::4] = forward
-        vertices[1::4] = backward
-        vertices[2::4] = left
-        vertices[3::4] = right
-
+    def setGround(self, vertices=None, colors=None):
+        if vertices is None:
+            vertices = makeGround()
+        
+        if colors is None:
+            colors = np.ones_like(vertices)
+    
         xobj = XObj("ground")
         vao = VAO(mode=mgl.LINES)
         vao.buffer(np.array(vertices, dtype="f4"), '3f', 'in_position')
-        vao.buffer(np.array(np.ones_like(vertices),  dtype="f4"), '3f', 'in_rgb')
-
+        vao.buffer(np.array(colors,  dtype="f4"), '3f', 'in_rgb')
         xobj.bind_vao(vao)
         xobj.bind_prog(self.pcd_prog)       
         self.xobjs.append(xobj)

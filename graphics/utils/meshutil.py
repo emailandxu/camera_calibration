@@ -8,6 +8,29 @@ def makeCoord():
     vertices = np.concatenate([origin, axis], axis=-1)
     return vertices.reshape(-1, 3)
 
+def makeGround(width=10, height=10, grid=100):
+    x = np.linspace(-width//2, +width//2, grid)
+    y = np.zeros_like(x)
+    z_forward = np.ones_like(x) * height // 2
+    z_backward = np.ones_like(x) * -height // 2
+    forward = np.stack([x, y, z_forward], axis=-1)
+    backward = np.stack([x, y, z_backward], axis=-1)
+
+    z = np.linspace(-width//2, +width//2, grid)
+    y = np.zeros_like(z)
+    x_left = np.ones_like(z) * -width // 2
+    x_right = np.ones_like(z) * width // 2
+    left = np.stack([x_left, y, z], axis=-1)
+    right = np.stack([x_right, y, z], axis=-1)
+
+    vertices = np.zeros((grid*4, 3))
+    vertices[0::4] = forward
+    vertices[1::4] = backward
+    vertices[2::4] = left
+    vertices[3::4] = right
+    return vertices
+
+
 def applyMat(mat, vertices):
     h_vertices = np.concatenate([vertices, np.ones_like(vertices[..., [0]])], axis=-1)
     return ( mat @ h_vertices.T).T[..., :3]
