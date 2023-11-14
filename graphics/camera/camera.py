@@ -30,6 +30,7 @@ def getProjectionMatrix(znear=0.01, zfar=100, fovX=1.57, fovY=1.57):
 
 class Camera(CameraBase):
     def __init__(self) -> None:
+        self.speed = 1.0
         self.scroll_factor = 0.
 
         self._view = np.identity(4)
@@ -80,7 +81,9 @@ class Camera(CameraBase):
         pass
 
     def mouse_scroll_event(self, x_offset, y_offset):
-        self.scroll_factor += 0.1 * y_offset
+        delta = np.exp(np.abs(self.scroll_factor) * 0.1) - 0.99
+        delta = np.clip(delta, 0.001, 10)
+        self.scroll_factor += np.sign(y_offset) * delta
 
     def debug_gui(self, t, frame_t):
         import imgui

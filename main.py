@@ -1,10 +1,11 @@
 import moderngl as mgl
+import moderngl_window as mglw
 from graphics import *
 from sfmparser import from_openmvg, from_colmap, fetchPCD
 import os
 from imageio import imread_v2 as imread
 
-def colmap_pcd_with_W2Cs():
+def colmap_pcd_with_W2Cs(camera_meta, image_folder, plypath):
     """
     colmap offsers extrinsic in rotation and translate vector.
     so the world 2 camera should be compose of rotation in :3, :3,
@@ -14,7 +15,7 @@ def colmap_pcd_with_W2Cs():
     transes = []
     rotations = []
     W2Cs = []
-    for key, trans, rotmat in from_colmap("db/avenue-cubic/sparse/0/images.txt", "db/avenue-cubic/images"):
+    for key, trans, rotmat in from_colmap(camera_meta, image_folder):
         keys.append(key)
         transes.append(trans)
         rotations.append(rotmat)
@@ -29,10 +30,10 @@ def colmap_pcd_with_W2Cs():
         W2Cs.append(W2C)
 
     W2Cs = np.array(W2Cs)
-    pcd_points, pcd_colors = fetchPCD("db/avenue-cubic/sparse/0/points3D.ply")
+    pcd_points, pcd_colors = fetchPCD(plypath)
     return (pcd_points, pcd_colors, W2Cs, keys)
 
-def openmvg_pcd_with_W2Cs():
+def openmvg_pcd_with_W2Cs(camera_meta, image_folder, plypath):
     """
     openmvg offers extrinsic in rotation and camera center, 
     so the world to camera matrix should be Rotate @ translate(-center).
@@ -51,7 +52,7 @@ def openmvg_pcd_with_W2Cs():
     rotations = []
     W2Cs = []
 
-    for key, center, rotation in from_openmvg("db/restroom/output/sfm_data_perspective.json", "db/restroom/output/images"):
+    for key, center, rotation in from_openmvg(camera_meta, image_folder):
         if not os.path.exists(key):
             continue
         else:
@@ -73,13 +74,16 @@ def openmvg_pcd_with_W2Cs():
         W2Cs.append(W2C)
     
     W2Cs = np.array(W2Cs)
-    pcd_points, pcd_colors = fetchPCD("db/restroom/output/reconstruction_global/colorized.ply")
+    pcd_points, pcd_colors = fetchPCD(plypath)
 
     
     return (pcd_points, pcd_colors, W2Cs, keys)
 
-def pcd_with_W2Cs():
-    return colmap_pcd_with_W2Cs()
+def pcd_with_W2Cs(dataset_type, camera_meta, image_folder, plypath):
+    if dataset_type == "colmap":
+        return colmap_pcd_with_W2Cs(camera_meta, image_folder, plypath)
+    elif dataset_type == "openmvg":
+        return openmvg_pcd_with_W2Cs(camera_meta, image_folder, plypath)
 
 
 class Main(Window):
@@ -87,18 +91,21 @@ class Main(Window):
 
     def __init__(self, ctx: "Context" = None, wnd: "BaseWindow" = None, timer: "BaseTimer" = None, **kwargs):
         super().__init__(ctx, wnd, timer, **kwargs)
+        print("myargv:", self.myargv)
+
         self.fpscamera = self.camera
         self.simple_camera = Camera() 
         self.wfpscamera = bool_widget("fpscamera", False)
 
-        self.pcd_points, self.pcd_colors, self.W2Cs, self.keys = pcd_with_W2Cs()
+        self.pcd_points, self.pcd_colors, self.W2Cs, self.keys = \
+            pcd_with_W2Cs(self.myargv.dataset_type, self.myargv.camera_meta, self.myargv.image_folder, self.myargv.plypath)
         
         self.wsimple_camera_index = int_widget("cam_index", 0, len(self.W2Cs)-1, 0)
 
         self.simple_camera._view = self.W2Cs[0]
 
         for w2c in self.W2Cs:
-            self.vertices.append(applyMat(np.linalg.inv(w2c) @ scale(0.05), makeCoord()))
+            self.vertices.append(applyMat(np.linalg.inv(w2c) @ scale(self.myargv.scale), makeCoord()))
 
         self.setGround()
         self.setAxis(self.vertices)
@@ -111,7 +118,7 @@ class Main(Window):
             center = c2w[:3, 3]
             rotmat = c2w[:3, :3]
             quat = mat2quat(rotmat)
-            self.setPlane(img[::-1], center=center, quat=quat, scale=[0.05]*3)
+            self.setPlane(img[::-1], center=center, quat=quat, scale=[self.myargv.scale]*3)
 
 
     def xrender(self, t, frame_t):
@@ -125,4 +132,19 @@ class Main(Window):
     
         super().xrender(t, frame_t)
 
-run_window_config(Main)
+if __name__ == '__main__':
+    import sys
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset-type", default="colmap", choices=["colmap", "openmvg"], required=True, help="sfm toolkit type")
+    parser.add_argument("--camera-meta", default="db/avenue-cubic/sparse/0/images.txt", required=True, help="camera intrinsic and extrinsic file")
+    parser.add_argument("--image-folder", default="db/avenue-cubic/images", required=True, help="image folder")
+    parser.add_argument("--plypath", default="db/avenue-cubic/sparse/0/points3D.ply", required=True, help="point cloud ply file")
+    parser.add_argument("--scale", default=0.05, type=float, help="point cloud ply file")
+
+    argv, args = parser.parse_known_args(sys.argv[1:])
+    Main.myargv = argv
+
+
+    run_window_config(Main, args=args + ["--window", "pyglet"])
