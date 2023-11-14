@@ -2,13 +2,19 @@ import moderngl as mgl
 from graphics import *
 from sfmparser import from_openmvg, from_colmap, fetchPCD
 import os
+from imageio import imread_v2 as imread
 
 def colmap_pcd_with_W2Cs():
+    """
+    colmap offsers extrinsic in rotation and translate vector.
+    so the world 2 camera should be compose of rotation in :3, :3,
+    and translation in :3, 3.
+    """
     keys = []
     transes = []
     rotations = []
     W2Cs = []
-    for key, trans, rotmat in from_colmap("db/avenue-cubic/sparse/0/images.txt"):
+    for key, trans, rotmat in from_colmap("db/avenue-cubic/sparse/0/images.txt", "db/avenue-cubic/images"):
         keys.append(key)
         transes.append(trans)
         rotations.append(rotmat)
@@ -17,11 +23,9 @@ def colmap_pcd_with_W2Cs():
     rotations = np.array(rotations)
 
     for trans, rotation in zip(transes, rotations):
-        R = np.identity(4)
-        R[:3, :3] = rotation
-        T = np.identity(4)
-        T[:3, 3] = trans
-        W2C = R @ T
+        W2C = np.identity(4)
+        W2C[:3, :3] = rotation
+        W2C[:3, 3] = trans
         W2Cs.append(W2C)
 
     W2Cs = np.array(W2Cs)
@@ -29,6 +33,10 @@ def colmap_pcd_with_W2Cs():
     return (pcd_points, pcd_colors, W2Cs, keys)
 
 def openmvg_pcd_with_W2Cs():
+    """
+    openmvg offers extrinsic in rotation and camera center, 
+    so the world to camera matrix should be Rotate @ translate(-center).
+    """
     def fetchPCD(path):
         from plyfile import PlyData, PlyElement
         """return positions and color"""
@@ -40,10 +48,10 @@ def openmvg_pcd_with_W2Cs():
         
     keys = []
     centers = []
-    orientaions = []
+    rotations = []
     W2Cs = []
 
-    for key, center, orientaion in from_openmvg("db/avenue/output/sfm_data_perspective.json", "db/avenue/output/images"):
+    for key, center, rotation in from_openmvg("db/restroom/output/sfm_data_perspective.json", "db/restroom/output/images"):
         if not os.path.exists(key):
             continue
         else:
@@ -51,21 +59,21 @@ def openmvg_pcd_with_W2Cs():
 
         keys.append(key)
         centers.append(center)
-        orientaions.append(orientaion)
+        rotations.append(rotation)
     
     centers = np.array(centers)
-    orientaions = np.array(orientaions)
+    rotations = np.array(rotations)
 
-    for center, orientaion in zip(centers, orientaions):
+    for center, rotation in zip(centers, rotations):
         R = np.identity(4)
-        R[:3, :3] = orientaion #.transpose() # this is transpose
+        R[:3, :3] = rotation #.transpose() # this is transpose
         T = np.identity(4)
         T[:3, 3] = -center
         W2C = R @ T
         W2Cs.append(W2C)
     
     W2Cs = np.array(W2Cs)
-    pcd_points, pcd_colors = fetchPCD("db/avenue/output/reconstruction_global/colorized.ply")
+    pcd_points, pcd_colors = fetchPCD("db/restroom/output/reconstruction_global/colorized.ply")
 
     
     return (pcd_points, pcd_colors, W2Cs, keys)
@@ -90,12 +98,21 @@ class Temp(Window):
         self.simple_camera._view = self.W2Cs[0]
 
         for w2c in self.W2Cs:
-            self.vertices.append(applyMat(np.linalg.inv(w2c) @ scale(0.01), makeCoord()))
-
+            self.vertices.append(applyMat(np.linalg.inv(w2c) @ scale(0.05), makeCoord()))
 
         self.setGround()
         self.setAxis(self.vertices)
         self.setPoints(self.pcd_points, self.pcd_colors)
+
+        for idx, key in enumerate(self.keys):
+            img = imread(key)
+            w2c = self.W2Cs[idx]
+            c2w = np.linalg.inv(w2c)
+            center = c2w[:3, 3]
+            rotmat = c2w[:3, :3]
+            quat = mat2quat(rotmat)
+            self.setPlane(img, center=center, quat=quat, scale=[0.05]*3)
+
 
     def xrender(self, t, frame_t):
         if self.wfpscamera():

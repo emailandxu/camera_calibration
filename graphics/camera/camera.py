@@ -27,6 +27,8 @@ def getProjectionMatrix(znear=0.01, zfar=100, fovX=1.57, fovY=1.57):
 
 class Camera():
     def __init__(self) -> None:
+        self.scroll_factor = 0.
+
         self._view = np.identity(4)
         self._view[:3, 2] = np.array([0, 0, -1])
         self._view[:3, 3] = -np.array([0, 1, 2])
@@ -40,7 +42,17 @@ class Camera():
 
     @property
     def view(self):
-        return self._view
+        center = self.center
+        center += self.scroll_factor * self._view[2, :3]
+
+        t = self.trans_from_center(center)
+
+        return np.array([
+            [ *self._view[0, :3], t[0]],
+            [ *self._view[1, :3], t[1]],
+            [ *self._view[2, :3], t[2]],
+            [ *self._view[3]]
+        ])
     
     @property
     def center(self):
@@ -50,6 +62,13 @@ class Camera():
         t = view[:3, 3]
         C = -R.transpose() @ t # camera_center
         return C
+    
+    def trans_from_center(self, center):
+        R = np.identity(4)
+        R[:3, :3] = self._view[:3, :3]
+        t = np.identity(4)
+        t[:3, 3] = center
+        return -(R @ t)[:3, 3]
 
     def key_event(self, key, action, modifiers):
         pass
@@ -58,8 +77,9 @@ class Camera():
         pass
 
     def mouse_scroll_event(self, x_offset, y_offset):
-        pass
+        self.scroll_factor += 0.1 * y_offset
 
     def debug_gui(self, t, frame_t):
         import imgui
         imgui.text(f"camera center: {self.center}")
+        imgui.text(f"scroll factor: {self.scroll_factor:.1f}")

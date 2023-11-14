@@ -16,7 +16,8 @@
 #
 # if output_dir is not present script will create it
 # ffmpeg -i VID_20231023_123406_00_034.mp4 -vf "fps=1" input/%04d.jpg
-# docker run --rm -it -v $PWD:$PWD openmvg python3 $PWD/my_sfm_sphere.py $PWD/db/avenue/input $PWD/db/avenue/output
+# docker run --rm -it -v $PWD:$PWD openmvg python3 $PWD/scripts/my_sfm_sphere.py $PWD/db/restroom/input $PWD/db/restroom/output
+# sudo chown -R $(whoami) $PWD/db/restroom/output
 
 # Indicate the openMVG binary directory
 OPENMVG_SFM_BIN = "/opt/openMVG_Build/Linux-x86_64-RELEASE"

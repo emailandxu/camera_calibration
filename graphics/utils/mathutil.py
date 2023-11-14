@@ -82,49 +82,25 @@ def mat2quat(mat):
     from scipy.spatial.transform import Rotation
     return Rotation.from_matrix(mat[:3, :3]).as_quat()
 
-
-def qvec2rotmat(qvec):
-    return np.array([
-        [1 - 2 * qvec[2]**2 - 2 * qvec[3]**2,
-         2 * qvec[1] * qvec[2] - 2 * qvec[0] * qvec[3],
-         2 * qvec[3] * qvec[1] + 2 * qvec[0] * qvec[2]],
-        [2 * qvec[1] * qvec[2] + 2 * qvec[0] * qvec[3],
-         1 - 2 * qvec[1]**2 - 2 * qvec[3]**2,
-         2 * qvec[2] * qvec[3] - 2 * qvec[0] * qvec[1]],
-        [2 * qvec[3] * qvec[1] - 2 * qvec[0] * qvec[2],
-         2 * qvec[2] * qvec[3] + 2 * qvec[0] * qvec[1],
-         1 - 2 * qvec[1]**2 - 2 * qvec[2]**2]])
-
-def rotmat2qvec(R):
-    Rxx, Ryx, Rzx, Rxy, Ryy, Rzy, Rxz, Ryz, Rzz = R.flat
-    K = np.array([
-        [Rxx - Ryy - Rzz, 0, 0, 0],
-        [Ryx + Rxy, Ryy - Rxx - Rzz, 0, 0],
-        [Rzx + Rxz, Rzy + Ryz, Rzz - Rxx - Ryy, 0],
-        [Ryz - Rzy, Rzx - Rxz, Rxy - Ryx, Rxx + Ryy + Rzz]]) / 3.0
-    eigvals, eigvecs = np.linalg.eigh(K)
-    qvec = eigvecs[[3, 0, 1, 2], np.argmax(eigvals)]
-    if qvec[0] < 0:
-        qvec *= -1
-    return qvec
-
-
-def posemat(trans, quat, scale=None):
-    rotmat = quat2mat(quat) # 3x3
-
+def posemat(center=None, quat=None, scale=None):
+    rot_mat = np.identity(4)
+    center_mat = np.identity(4)
     scale_mat = np.identity(4)
-    
+
+    if quat is not None:
+        rot_mat[:3, :3] = quat2mat(quat)
+
+    if center is not None:
+        center_mat[0, 3] = center[0]
+        center_mat[1, 3] = center[1]
+        center_mat[2, 3] = center[2]
+
     if scale is not None:
         scale_mat[0, 0] = scale[0]
         scale_mat[1, 1] = scale[1]
         scale_mat[2, 2] = scale[2]
 
-    return (np.array([
-        [*rotmat[0], trans[0]],
-        [*rotmat[1], trans[1]],
-        [*rotmat[2], trans[2]],
-        [0., 0., 0., 1.]
-    ]) @ scale_mat).astype("f4")
+    return (center_mat @ rot_mat @ scale_mat)
 
 def spherical(theta, phi, radius):
     # https://community.khronos.org/t/moving-the-camera-using-spherical-coordinates/49549
@@ -146,11 +122,4 @@ def checkerboard(width, repetitions) -> np.ndarray:
     return np.stack((check, check, check), axis=-1)
 
 if __name__ == "__main__":
-    from scipy.spatial.transform import Rotation
-
-
-    # print(Rotation.from_quat([0, 0, 0, 1]).as_matrix())
-    # print(qvec2rotmat(np.array([1, 0, 0, 0])))
-
-    print(qvec2rotmat(rotmat2qvec(rotate_z(np.pi/2)[:3,:3] @ np.identity(3))))
-    print(Rotation.from_quat(Rotation.from_matrix(rotate_z(np.pi/2)[:3,:3] @ np.identity(3)).as_quat()).as_matrix())
+    pass

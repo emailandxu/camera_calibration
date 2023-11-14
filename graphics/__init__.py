@@ -47,7 +47,7 @@ class Window(WindowBase):
         self.xobjs.append(xobj)
         return xobj
     
-    def setPlane(self, tex, trans=None, quat=None, scale=None, name=None):
+    def setPlane(self, tex, center=None, quat=None, scale=None, name=None):
         xobj = XObj("plane" + (f"_{name}" if name else ""))
 
         vao = geometry.quad_fs()
@@ -58,13 +58,13 @@ class Window(WindowBase):
         xobj.bind_texture(texture)
 
         xobj.scale = scale if scale is not None else np.array([1, 1, 1])
-        xobj.trans = trans if trans is not None else np.array([0, 0, 0])
+        xobj.center = center if center is not None else np.array([0, 0, 0])
         xobj.quat = quat if quat is not None else np.array([0, 0, 0, 1])
 
         self.xobjs.append(xobj)
         return xobj
     
-    def setPoints(self, points, rgbs, trans=None, quat=None, scale=None, name=None):
+    def setPoints(self, points, rgbs, center=None, quat=None, scale=None, name=None):
         xobj = XObj("points" + (f"_{name}" if name else ""))
         vao = VAO(mode=mgl.POINTS)
         vao.buffer(np.array(points, dtype="f4"), "3f", "in_position")
@@ -74,7 +74,7 @@ class Window(WindowBase):
         xobj.bind_prog(self.pcd_prog)
 
         xobj.scale = scale if scale is not None else np.array([1, 1, 1])
-        xobj.trans = trans if trans is not None else np.array([0, 0, 0])
+        xobj.center = center if center is not None else np.array([0, 0, 0])
         xobj.quat = quat if quat is not None else np.array([0, 0, 0, 1])
 
         self.xobjs.append(xobj)

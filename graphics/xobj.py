@@ -6,7 +6,7 @@ from .utils.mathutil import posemat
 class XObjBase():
     def __init__(self, name="undefined") -> None:
         self.scale = np.ones(3)
-        self.trans = np.zeros(3) # x, y, z
+        self.center = np.zeros(3) # x, y, z
         self.quat = np.array([0., 0., 0., 1.]) # x, y, z, w
         self.scale_offset = np.ones(3)
 
@@ -15,7 +15,7 @@ class XObjBase():
 
     @property
     def posemat(self):
-        return posemat(self.trans, self.quat, self.scale)
+        return posemat(self.center, self.quat, self.scale)
 
 class XObj(XObjBase):
     def __init__(self, name="undefined") -> None:
