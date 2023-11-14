@@ -82,7 +82,7 @@ def pcd_with_W2Cs():
     return colmap_pcd_with_W2Cs()
 
 
-class Temp(Window):
+class Main(Window):
     vertices = [makeCoord()]
 
     def __init__(self, ctx: "Context" = None, wnd: "BaseWindow" = None, timer: "BaseTimer" = None, **kwargs):
@@ -125,4 +125,4 @@ class Temp(Window):
     
         super().xrender(t, frame_t)
 
-run_window_config(Temp)
+run_window_config(Main)
