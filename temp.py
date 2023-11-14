@@ -79,7 +79,7 @@ def openmvg_pcd_with_W2Cs():
     return (pcd_points, pcd_colors, W2Cs, keys)
 
 def pcd_with_W2Cs():
-    return openmvg_pcd_with_W2Cs()
+    return colmap_pcd_with_W2Cs()
 
 
 class Temp(Window):
@@ -111,7 +111,7 @@ class Temp(Window):
             center = c2w[:3, 3]
             rotmat = c2w[:3, :3]
             quat = mat2quat(rotmat)
-            self.setPlane(img, center=center, quat=quat, scale=[0.05]*3)
+            self.setPlane(img[::-1], center=center, quat=quat, scale=[0.05]*3)
 
 
     def xrender(self, t, frame_t):

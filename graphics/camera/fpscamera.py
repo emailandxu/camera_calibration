@@ -1,8 +1,9 @@
 import numpy as np
-from graphics.utils.mathutil import spherical, lookAt, cartesian
-from .camera import Camera
+from graphics.utils.mathutil import spherical, lookAt, cartesian, projection, rotate_x
+from .base import CameraBase
 
-class FPSCamera(Camera):
+
+class FPSCamera(CameraBase):
     def __init__(self) -> None:
         super().__init__()
         self.eye = np.array([0., 1., 1.])
@@ -15,9 +16,19 @@ class FPSCamera(Camera):
     @property
     def oriental(self):
         return np.array(spherical(self.theta, self.phi, 1.))
+    
+    @property
+    def proj(self):
+        from .camera import getProjectionMatrix
+        return getProjectionMatrix()
+    
+        # return projection(fov=45)
+
+
     @property
     def view(self):
-        return lookAt(eye=self.eye, at=self.eye+self.oriental, up=np.array([0, 1, 0]))
+        # rotate x 180 becasue the two sfm toolkit assume y axis pointing to bottom
+        return rotate_x(np.pi) @ lookAt(eye=self.eye, at=self.eye+self.oriental, up=np.array([0, 1, 0]))
     
     @view.setter
     def view(self, newview:np.ndarray):
@@ -44,9 +55,9 @@ class FPSCamera(Camera):
         elif key==107: # K
             self.phi -= self.frame_t
         elif key==99: # C
-            self.eye[1]-= self.frame_t * self.speed
+            self.eye[1] -= self.frame_t * self.speed
         elif key==32: # Space
-            self.eye[1]+= self.frame_t * self.speed
+            self.eye[1] += self.frame_t * self.speed
         elif key==46: # >
             self.speed+=self.frame_t
         elif key==44: # <
